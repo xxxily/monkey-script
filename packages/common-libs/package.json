@@ -1,0 +1,44 @@
+{
+  "name": "common-libs",
+  "version": "0.0.1",
+  "description": "common script libs",
+  "keywords": [
+    "common",
+    "libs"
+  ],
+  "author": "Blaze",
+  "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "logo.png"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "homepage": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xxxily/monkey-script"
+  },
+  "bugs": {
+    "url": "https://github.com/xxxily/monkey-script/issues"
+  },
+  "main": "dist/monkey-libs.umd.cjs",
+  "module": "dist/monkey-libs.js",
+  "typings": "dist/types/index.d.ts",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --mode lib && tsc",
+    "build-lib": "vite build --mode lib-only && tsc",
+    "build-types": "tsc --emitDeclarationOnly --outDir dist/types",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-legacy": "^4.0.1",
+    "terser": "^5.16.3",
+    "typescript": "^4.9.5",
+    "vite": "^4.1.0"
+  }
+}
