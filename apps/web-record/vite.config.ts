@@ -6,9 +6,15 @@ import monkey from 'vite-plugin-monkey'
 export default defineConfig({
   css: {
     postcss: {
+      /**
+       * 使用postcss-nesting（vite官方推荐）
+       * https://cn.vitejs.dev/guide/features.html#css
+       * https://github.com/csstools/postcss-plugins/tree/main/plugins/postcss-nesting
+       */
       plugins: [postcssNesting()],
     },
   },
+  
   plugins: [
     // https://github.com/lisonge/vite-plugin-monkey/blob/main/README_zh.md
     monkey({
@@ -19,7 +25,7 @@ export default defineConfig({
         name: '操作记录器',
         description: '浏览器操作记录辅助，单测代码生成辅助工具',
         // match: ['*://*/*'],
-        match: ['*://*.do1.*/*'],
+        match: ['*://*.do1.com.cn/*', '*://*.juejin.cn/*', '*://*.google.com/*', '*://*.element-plus.org/*'],
         version: '1.0.0',
         license: 'Apache License 2.0',
         author: 'ankvps',
