@@ -1,17 +1,54 @@
-/**
- * 简单的i18n库
+/*!
+ * @name         i18n.ts
+ * @description  简单的i18n的底层实现
+ * @version      0.0.1
+ * @author       xxxily
+ * @date         2023/03/01 16:16
+ * @github       https://github.com/xxxily
  */
 
-class I18n {
-  constructor (config) {
+type Language = {
+  [key: string | number | symbol]: string
+}
+
+type Config = {
+  locale?: string
+  languages?: Record<string, Language>
+  // languages?: {
+  //   [key: string]: Language
+  // }
+  defaultLanguage?: string
+}
+
+interface I18nInterface {
+  init(config?: Config): void | boolean
+  use(): void | boolean
+  t(path: string): string
+  language(): string
+  languages(): {
+    [key: string]: Language
+  }
+  changeLanguage(locale: string): boolean | string
+  getValByPath(obj: object, path: string): any
+  getClientLang(): string
+}
+
+class I18n implements I18nInterface {
+  private _languages: {
+    [key: string]: Language
+  }
+  private _locale: string
+  private _defaultLanguage: string
+
+  constructor(config: Config) {
     this._languages = {}
     this._locale = this.getClientLang()
     this._defaultLanguage = ''
     this.init(config)
   }
 
-  init (config) {
-    if (!config) return false
+  init(config: Config) {
+    if (!config) return
 
     const t = this
     t._locale = config.locale || t._locale
@@ -20,9 +57,9 @@ class I18n {
     t._defaultLanguage = config.defaultLanguage || t._defaultLanguage
   }
 
-  use () {}
+  use() {}
 
-  t (path) {
+  t(path: string) {
     const t = this
     let result = t.getValByPath(t._languages[t._locale] || {}, path)
 
@@ -35,15 +72,15 @@ class I18n {
   }
 
   /* 当前语言值 */
-  language () {
+  language() {
     return this._locale
   }
 
-  languages () {
+  languages() {
     return this._languages
   }
 
-  changeLanguage (locale) {
+  changeLanguage(locale: string) {
     if (this._languages[locale]) {
       this._locale = locale
       return locale
@@ -58,10 +95,10 @@ class I18n {
    * @param path {String} -必选 路径信息
    * @returns {*}
    */
-  getValByPath (obj, path) {
+  getValByPath(obj: object, path: string): any {
     path = path || ''
     const pathArr = path.split('.')
-    let result = obj
+    let result: any = obj
 
     /* 递归提取结果值 */
     for (let i = 0; i < pathArr.length; i++) {
@@ -73,7 +110,7 @@ class I18n {
   }
 
   /* 获取客户端当前的语言环境 */
-  getClientLang () {
+  getClientLang() {
     return navigator.languages ? navigator.languages[0] : navigator.language
   }
 }

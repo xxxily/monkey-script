@@ -1,5 +1,6 @@
 import Recorder from './recorder '
 import { UserAction, MouseType, KeyboardType, TouchType } from './recorder '
+import { getXPath, getFullXPath, getElementByXPath } from './helper'
 
 // 创建录制器实例
 const recorder = new Recorder()
@@ -58,6 +59,77 @@ export interface Options {
   touchHandler?: (e: TouchEvent, action: UserAction) => void
   dragHandler?: (e: DragEvent | MouseEvent, action: UserAction) => void
   scrollHandler?: (e: Event, action: UserAction) => void
+}
+
+/* 判断键名是否是对象的键名 */
+export function isValidKey(key: string | number | symbol, object: object): key is keyof typeof object {
+  return key in object
+}
+
+/**
+ * 解决for in 类型报：在类型 "xxx"上找不到具有类型为 "string" 的参数的索引签名
+ * https://blog.csdn.net/zy21131437/article/details/121246493
+ */
+interface EventObject extends Event {
+  [key: string | number | symbol]: any
+}
+
+/* 提取事件的相关信息 */
+export interface EventInfo {
+  [key: string | number | symbol]: any
+}
+
+function extractEventInfo(e: EventObject) {
+  const eventInfo: EventInfo = {}
+
+  /* 获取event对象下所有键名，并且将键值为数字或字符串的键值对提取出来 */
+  for (const key in e) {
+    try {
+      const val = e[key]
+      if (typeof val !== 'function' && typeof val !== 'object') {
+        eventInfo[key] = val
+      }
+    } catch (err) {
+      console.error('[extractEventInfo]', err, e)
+    }
+  }
+
+  const target = e.target as HTMLElement
+
+  /* 利用缓存减少计算量 */
+  if (target.__observers_full_xpath__ && getElementByXPath(target.__observers_full_xpath__) === target) {
+    eventInfo.fullXPath = target.__observers_full_xpath__
+  } else {
+    eventInfo.fullXPath = getFullXPath(target)
+    target.__observers_full_xpath__ = eventInfo.fullXPath
+  }
+
+  /* 利用缓存减少计算量 */
+  if (target.__observers_xpath__ && getElementByXPath(target.__observers_xpath__) === target) {
+    eventInfo.xPath = target.__observers_xpath__
+  } else {
+    eventInfo.xPath = getXPath(target)
+    target.__observers_xpath__ = eventInfo.xPath
+  }
+
+  /* 获取元素矩形信息，暂时来说没太大用处 */
+  // if (target.getBoundingClientRect) {
+  //   eventInfo.rect = target.getBoundingClientRect()
+  // } else {
+  //   /* 当target为document时，target.getBoundingClientRect为undefined */
+  //   // console.error('[extractEventInfo] target.getBoundingClientRect is not a function', target)
+  // }
+
+  /**
+   * 获取元素的innerText
+   * 为了降低性能损耗，只有当元素的子元素数量小于等于3个，且子元素的dom节点数小于5，且innerText的字符长度小于80时才获取innerText
+   * 另外：过于复杂的dom结构，获取到的innerText并不是我们所需要的
+   */
+  if (target.childElementCount <= 3 && target.querySelectorAll('*').length < 5 && target.innerText && target.innerText.length < 80) {
+    eventInfo.innerText = target.innerText
+  }
+
+  return eventInfo
 }
 
 export default class WebObserver {
@@ -146,11 +218,7 @@ export default class WebObserver {
           const action = {
             type: type,
             time: Date.now(),
-            data: {
-              event: event,
-              x: event.clientX,
-              y: event.clientY,
-            },
+            data: extractEventInfo(event),
           }
 
           /* 执行自定义事件处理函数 */
@@ -183,11 +251,7 @@ export default class WebObserver {
         const action = {
           type: type,
           time: Date.now(),
-          data: {
-            event: event,
-            // x: event.touches[0].clientX,
-            // y: event.touches[0].clientY,
-          },
+          data: extractEventInfo(event),
         }
 
         /* 执行自定义事件处理函数 */
@@ -214,28 +278,27 @@ export default class WebObserver {
       dragStartY = event.clientY
     })
 
-    element.addEventListener('mousemove', (event: MouseEvent) => {
-      if (isDragging) {
-        const action = {
-          type: 'drag',
-          time: Date.now(),
-          target: event.target as HTMLElement,
-          data: {
-            startX: dragStartX,
-            startY: dragStartY,
-            endX: event.clientX,
-            endY: event.clientY,
-          },
+    element.addEventListener(
+      'mousemove',
+      (event: MouseEvent) => {
+        if (isDragging) {
+          const action = {
+            type: 'drag',
+            time: Date.now(),
+            target: event.target as HTMLElement,
+            data: extractEventInfo(event),
+          }
+
+          /* 执行自定义事件处理函数 */
+          this.opts.dragHandler instanceof Function && this.opts.dragHandler(event, action)
+
+          recorder.record(action)
+          dragStartX = event.clientX
+          dragStartY = event.clientY
         }
-
-        /* 执行自定义事件处理函数 */
-        this.opts.dragHandler instanceof Function && this.opts.dragHandler(event, action)
-
-        recorder.record(action)
-        dragStartX = event.clientX
-        dragStartY = event.clientY
-      }
-    }, true)
+      },
+      true
+    )
 
     element.addEventListener('mouseup', (event: MouseEvent) => {
       isDragging = false
@@ -256,10 +319,7 @@ export default class WebObserver {
       const action = {
         type: 'scroll',
         time: Date.now(),
-        data: {
-          event: event,
-          scrollTop: (event.target as HTMLElement).scrollTop,
-        },
+        data: extractEventInfo(event),
       }
 
       /* 执行自定义事件处理函数 */
@@ -285,11 +345,7 @@ export default class WebObserver {
           const action = {
             type: type,
             time: Date.now(),
-            data: {
-              event: event,
-              key: event.key,
-              keyCode: event.keyCode,
-            },
+            data: extractEventInfo(event),
           }
 
           /* 执行自定义事件处理函数 */

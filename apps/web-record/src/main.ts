@@ -18,17 +18,17 @@ import { seleniumPythonTemplateMap } from './userActionToCode'
     mouseleave: false,
     mouseover: false,
     mouseout: false,
-    mousemoveSampleInterval: 30,
-    mouseHandler(event, action) {
-      if (action.type === 'click' || action.type === 'dblclick') {
-        const target = event.target as HTMLElement
-        const xpath = getXPath(target)
-        action.data.xpath = xpath
+    // mousemoveSampleInterval: 30,
+    // mouseHandler(event, action) {
+    //   if (action.type === 'click' || action.type === 'dblclick') {
+    //     const target = event.target as HTMLElement
+    //     const xpath = getXPath(target)
+    //     action.data.xpath = xpath
 
-        // const styles = getStyles(target)
-        // action.data.styles = styles
-      }
-    },
+    //     const styles = getStyles(target)
+    //     action.data.styles = styles
+    //   }
+    // },
 
     keydown: true,
     keyup: true,
