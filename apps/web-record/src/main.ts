@@ -1,72 +1,27 @@
 import './style.css'
-import WebObserver from './observers'
-import { getXPath, getElementByXPath, getStyles } from './helper'
-import ElementSelection from './elementSelection'
+import recordConfig from './recordConfig'
+import debug from './debug'
+import webObs, { registerWebObserverHotkey } from './webObs'
+import highlightPlugin from './highlightPlugin'
 import { fromEvent, filter, bufferTime } from 'rxjs'
 import userActionsToCode from './userActionToCode'
-import { seleniumPythonTemplateMap } from './userActionToCode'
-;(() => {
-  console.log('web-record init')
+import { menuRegister } from './menuManager'
+// import { getXPath, getElementByXPath, getStyles } from './helper'
 
-  const webObs = new WebObserver(document, {
-    click: true,
-    dblclick: true,
-    mousemove: false,
-    mousedown: false,
-    mouseup: false,
-    mouseenter: false,
-    mouseleave: false,
-    mouseover: false,
-    mouseout: false,
-    // mousemoveSampleInterval: 30,
-    // mouseHandler(event, action) {
-    //   if (action.type === 'click' || action.type === 'dblclick') {
-    //     const target = event.target as HTMLElement
-    //     const xpath = getXPath(target)
-    //     action.data.xpath = xpath
+function main() {
+  menuRegister()
 
-    //     const styles = getStyles(target)
-    //     action.data.styles = styles
-    //   }
-    // },
+  if (!recordConfig.get('enable')) return
 
-    keydown: true,
-    keyup: true,
-    keypress: false,
-    keyboardHandler(event, action) {
-      /* 忽略用户按下的某些按键 */
-      if (event.code === 'ControlRight') {
-        /* 标识丢弃掉该action */
-        action.__drop__ = true
-      }
-    },
+  debug.log('web-record init')
+
+  /* 是否默认启动webRecord的录制功能 */
+  recordConfig.get('webObs.enable') ? webObs.observer() : webObs.unObserver()
+  registerWebObserverHotkey()
+
+  window.addEventListener('DOMContentLoaded', () => {
+    highlightPlugin.init()
   })
-
-  /* 注册观察者记录用户操作 */
-  webObs.recorder.register((action) => {
-    const event = action.data.event
-    if (action.type !== 'mousemove' && action.type !== 'dblclick' && action.type !== 'scroll') {
-      if (!!false) {
-        console.log(`Recorded action: [${action.type}]`, event.target, event)
-      }
-    }
-
-    if (action.type === 'dblclick') {
-      // console.log(`Recorded actions: [${action.type}]`, webObs.recorder.getActions())
-    }
-  })
-
-  /* 开启观察模式 */
-  webObs.observer()
-
-  /* 关闭观察模式 */
-  // webObs.unObserver()
-
-  const elementSelection = new ElementSelection(document.documentElement)
-
-  // setTimeout(() => {
-  //   elementSelection.disable()
-  // }, 1000 * 60 * 5)
 
   const targetKeys = ['ControlLeft', 'ControlRight', 'MetaLeft', 'MetaRight', 'Space']
   const dblKeyPress = fromEvent(document, 'keydown', {
@@ -79,7 +34,7 @@ import { seleniumPythonTemplateMap } from './userActionToCode'
       if (events.length === 2) {
         const event = events[0] as KeyboardEvent
         const event2 = events[1] as KeyboardEvent
-        // console.log('[ctrlPress][event]', event.code)
+        // debug.log('[ctrlPress][event]', event.code)
         return event.key === event2.key && targetKeys.includes(event2.code)
       } else {
         return false
@@ -88,17 +43,52 @@ import { seleniumPythonTemplateMap } from './userActionToCode'
   )
 
   dblKeyPress.subscribe((events) => {
-    const curEl = elementSelection.getCurrentTarget()
+    debug.log(`[Recorded actions]`, webObs.recorder.getActions())
+    debug.log(`[Recorded actions][code]\n`, userActionsToCode(webObs.recorder.getActions(), JSON.parse(recordConfig.get('codeTemplate')), true))
 
-    if (curEl) {
-      const xpath = getXPath(curEl)
-      console.log('[dblKeyPress]', xpath, getElementByXPath(xpath) === curEl)
-      console.log(`[Recorded actions]`, webObs.recorder.getActions())
-      console.log(`[Recorded actions][code]\n`, userActionsToCode(webObs.recorder.getActions(), seleniumPythonTemplateMap, true))
-      // console.log(`[getStyles]`, getStyles(curEl))
-    } else {
-      const event = events[1] as KeyboardEvent
-      console.log('[dblKeyPress][subscribe]', event.code, events)
-    }
+    // const curEl = elementSelection.getCurrentTarget()
+    // if (curEl) {
+    //   const xpath = getXPath(curEl)
+    //   debug.log('[dblKeyPress]', xpath, getElementByXPath(xpath) === curEl)
+    //   debug.log(`[getStyles]`, getStyles(curEl))
+    // } else {
+    //   const event = events[1] as KeyboardEvent
+    //   debug.log('[dblKeyPress][subscribe]', event.code, events)
+    // }
   })
-})()
+}
+
+function init(retryCount: number = 0): boolean | void {
+  if (!window.document || !window.document.documentElement) {
+    setTimeout(() => {
+      if (retryCount < 200) {
+        init(retryCount + 1)
+      } else {
+        debug.error('not documentElement detected!', window)
+      }
+    }, 10)
+
+    return false
+  } else if (retryCount > 0) {
+    debug.warn('documentElement detected!', retryCount, window)
+  }
+
+  main()
+}
+
+/**
+ * 某些极端情况下，直接访问window对象都会导致报错，所以整个init都try起来
+ * 例如：www.icourse163.org 就有一定的机率异常
+ */
+let initTryCount = 0
+try {
+  init(0)
+} catch (e) {
+  setTimeout(() => {
+    if (initTryCount < 200) {
+      initTryCount++
+      init(0)
+      debug.error('init error', initTryCount, e)
+    }
+  }, 10)
+}

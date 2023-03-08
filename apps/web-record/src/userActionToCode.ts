@@ -32,6 +32,31 @@ export default function userActionsToCode(actions: UserAction[], templateMap: Te
 }
 
 /**
+ * 检验代码模板是否合法，TODO: 待完善校验逻辑
+ * @param template {string} -必选 代码模板，json字符串
+ * @returns
+ */
+export function codeTemplateVerify(template: string) {
+  try {
+    const templateMap = JSON.parse(template)
+    const templateMapKeys = Object.keys(templateMap)
+
+    for (let i = 0; i < templateMapKeys.length; i++) {
+      const key = templateMapKeys[i]
+      const value = templateMap[key]
+
+      if (typeof value !== 'string') {
+        return false
+      }
+    }
+
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+/**
  * selenium python模板映射（示例）
  * handlebars模板语法：https://handlebarsjs.com/zh/guide/
  */

@@ -2,8 +2,8 @@ import { isObj, isArr } from './typeof'
 
 type DebugMethodNames = 'log' | 'error' | 'info' | 'warn'
 interface DebugMethod {
-  (msg?: any, ...optionalParams: any[]): void;
-  parse?(...args: any[]): void;
+  (msg?: any, ...optionalParams: any[]): void
+  parse?(...args: any[]): void
 }
 
 class Debug {
@@ -12,6 +12,8 @@ class Debug {
   public info: DebugMethod = () => {}
   public warn: DebugMethod = () => {}
 
+  private debugMode: boolean = false
+
   constructor(msg?: string) {
     const t = this
     msg = msg || 'debug message:'
@@ -19,10 +21,27 @@ class Debug {
     t.log = t.createDebugMethod('log', null, msg)
     t.error = t.createDebugMethod('error', null, msg)
     t.info = t.createDebugMethod('info', null, msg)
+    t.warn = t.createDebugMethod('warn', null, msg)
   }
 
   public create(msg?: string): Debug {
     return new Debug(msg)
+  }
+
+  public setDebugMode(mode: boolean): void {
+    this.debugMode = mode
+  }
+
+  public enable() {
+    this.setDebugMode(true)
+  }
+
+  public disable() {
+    this.setDebugMode(false)
+  }
+
+  public isDebugMode(): boolean {
+    return this.debugMode
   }
 
   private createDebugMethod(name: DebugMethodNames, color?: string | null, tipsMsg?: string): DebugMethod {
@@ -34,7 +53,7 @@ class Debug {
     }
 
     const handler: DebugMethod = (...args: any[]) => {
-      if (!window._debugMode_) return
+      if (!this.isDebugMode()) return
 
       const curTime = new Date()
       const H = curTime.getHours()
@@ -69,10 +88,6 @@ class Debug {
 
     return handler
   }
-
-  public isDebugMode(): boolean {
-    return Boolean(window._debugMode_)
-  }
 }
 
-export default new Debug()
+export default Debug

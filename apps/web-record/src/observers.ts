@@ -59,6 +59,16 @@ export interface Options {
   touchHandler?: (e: TouchEvent, action: UserAction) => void
   dragHandler?: (e: DragEvent | MouseEvent, action: UserAction) => void
   scrollHandler?: (e: Event, action: UserAction) => void
+
+  /* TODO 忽略某些元素或特定键位的录制，待完善 */
+  ignore?: {
+    className?: string[]
+    tagName?: string[]
+    ids?: string[]
+    keyCodes?: number[]
+    hotKeys?: string[]
+    handler?: (e: Event) => boolean
+  }
 }
 
 /* 判断键名是否是对象的键名 */
@@ -193,6 +203,50 @@ export default class WebObserver {
     }
   }
 
+  isIgnoreDom(target: HTMLElement) {
+    if (this.opts.ignore) {
+      const { className, tagName, ids } = this.opts.ignore
+
+      if (className && className.length) {
+        for (let i = 0; i < className.length; i++) {
+          if (target.classList.contains(className[i])) {
+            return true
+          }
+        }
+      }
+
+      if (tagName && tagName.length) {
+        for (let i = 0; i < tagName.length; i++) {
+          if (target.tagName === tagName[i].toUpperCase()) {
+            return true
+          }
+        }
+      }
+
+      if (ids && ids.length) {
+        for (let i = 0; i < ids.length; i++) {
+          if (target.id === ids[i]) {
+            return true
+          }
+        }
+      }
+    }
+
+    return false
+  }
+
+  isIgnoredKeyboardEvent(e: KeyboardEvent) {
+    if (this.opts.ignore) {
+      const { keyCodes } = this.opts.ignore
+
+      if (keyCodes && keyCodes.length) {
+        return keyCodes.includes(e.keyCode)
+      }
+    }
+
+    return false
+  }
+
   /* 监听鼠标移动事件 */
   mouseObserver(element: ObserverElement) {
     const mouseType: MouseType[] = ['click', 'dblclick', 'mousemove', 'mousedown', 'mouseup', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout']
@@ -214,6 +268,8 @@ export default class WebObserver {
             if (lastMousemoveEvent && event.timeStamp - lastMousemoveEvent.timeStamp < this.opts.mousemoveSampleInterval) return
             lastMousemoveEvent = event
           }
+
+          if (this.isIgnoreDom(event.target as HTMLElement)) return
 
           const action = {
             type: type,
@@ -247,6 +303,8 @@ export default class WebObserver {
         if (this.disable) return
 
         const event = e as TouchEvent
+
+        if (this.isIgnoreDom(event.target as HTMLElement)) return
 
         const action = {
           type: type,
@@ -316,6 +374,8 @@ export default class WebObserver {
     element.addEventListener('scroll', (event: Event) => {
       if (this.disable) return
 
+      if (this.isIgnoreDom(event.target as HTMLElement)) return
+
       const action = {
         type: 'scroll',
         time: Date.now(),
@@ -342,6 +402,8 @@ export default class WebObserver {
 
           const event = e as KeyboardEvent
 
+          if (this.isIgnoredKeyboardEvent(event)) return
+
           const action = {
             type: type,
             time: Date.now(),
@@ -356,6 +418,10 @@ export default class WebObserver {
         true
       )
     })
+  }
+
+  isObserver() {
+    return !this.disable
   }
 
   observer() {

@@ -23,3 +23,15 @@ function toogleBoxShadow(element) {
 }
 
 toogleBoxShadow(document.documentElement)
+
+
+
+function keyboardInfo () {
+  // document.documentElement
+  window.addEventListener('keydown', (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    console.log(`[keyboardInfo] code:${event.code} key:${event.key} keyCode:${event.keyCode}`, event)
+  }, true)
+}
+keyboardInfo()

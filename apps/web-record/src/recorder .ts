@@ -55,7 +55,7 @@ export default class Recorder {
   }
 
   // 清除用户操作记录
-  public clearActions() {
+  public clear() {
     this.actions = []
   }
 }
