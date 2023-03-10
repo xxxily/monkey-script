@@ -38,7 +38,7 @@ export default class Recorder {
   // 通知观察者记录用户操作
   private notify(action: UserAction) {
     for (const observer of this.observers) {
-      observer(action)
+      observer instanceof Function && observer(action)
     }
   }
 

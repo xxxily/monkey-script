@@ -31,20 +31,28 @@ export default class ElementSelection {
     let originalBoxShadow = ''
     let originalOutline = ''
 
-    const borderBox = (document.querySelector('#__el_border_box__') || document.createElement('div')) as HTMLElement
-    borderBox.id = '__el_border_box__'
-    borderBox.style.position = 'fixed'
-    borderBox.style.border = outlineSty
-    borderBox.style.pointerEvents = 'none'
-    borderBox.style.zIndex = '9999999'
-    borderBox.style.borderRadius = `${opts.borderRadius || '3px'}`
-    borderBox.style.visibility = 'hidden'
-    document.body.appendChild(borderBox)
-
     const boxType = opts.type || 'div'
     const useOutline = boxType === 'outline' || boxType === 'combine'
     const useBoxShadow = boxType === 'box-shadow' || boxType === 'boxShadow' || boxType === 'combine'
     const useDiv = boxType === 'div' || boxType === 'combine'
+
+    function createDivBox(): HTMLElement {
+      const borderBoxEl = document.getElementById('__el_border_box__')
+      if (borderBoxEl) return borderBoxEl as HTMLElement
+
+      const borderBox = (document.querySelector('#__el_border_box__') || document.createElement('div')) as HTMLElement
+      borderBox.id = '__el_border_box__'
+      borderBox.style.position = 'fixed'
+      borderBox.style.border = outlineSty
+      borderBox.style.pointerEvents = 'none'
+      borderBox.style.zIndex = '9999999'
+      borderBox.style.borderRadius = `${opts.borderRadius || '3px'}`
+      borderBox.style.visibility = 'hidden'
+      document.body.appendChild(borderBox)
+
+      return borderBox
+    }
+    createDivBox()
 
     element.addEventListener(
       'mouseover',
@@ -73,6 +81,7 @@ export default class ElementSelection {
         }
 
         if (useDiv) {
+          const borderBox = createDivBox()
           const rect = target.getBoundingClientRect()
           borderBox.style.top = rect.top + 'px'
           borderBox.style.left = rect.left + 'px'
@@ -94,7 +103,12 @@ export default class ElementSelection {
         const target = event.target as HTMLElement
         useBoxShadow && (target.style.boxShadow = originalBoxShadow || '')
         useOutline && (target.style.outline = originalOutline || '')
-        useDiv && (borderBox.style.visibility = 'hidden')
+
+        if (useDiv) {
+          const borderBox = createDivBox()
+          borderBox.style.visibility = 'hidden'
+        }
+
         originalBoxShadow = ''
         originalOutline = ''
 

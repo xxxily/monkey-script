@@ -8,17 +8,17 @@ import highlightPlugin from './highlightPlugin'
 function menuBuilder() {
   let monkeyMenuList: MenuInfo[] = [
     {
-      title: () => `${recordConfig.get('enable') ? '禁用脚本' : '启用脚本'} [当前域]`,
+      title: () => `${recordConfig.get('enable') ? '禁用脚本' : '启用脚本'} [全局]`,
       fn: () => {
-        recordConfig.set('enable', !recordConfig.get('enable'))
+        recordConfig.setGlobalStorage('enable', !recordConfig.get('enable'))
         window.location.reload()
       },
       disable: false,
     },
     {
-      title: () => `${recordConfig.get('webObs.enable') ? '禁用默认的录制模式' : '启动默认的录制模式'} [当前域]`,
+      title: () => `${recordConfig.get('webObs.enable') ? '禁用录制模式' : '启用录制模式'} [全局]`,
       fn: () => {
-        recordConfig.set('webObs.enable', !recordConfig.get('webObs.enable'))
+        recordConfig.setGlobalStorage('webObs.enable', !recordConfig.get('webObs.enable'))
         window.location.reload()
       },
       disable: false,

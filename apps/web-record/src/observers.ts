@@ -1,5 +1,5 @@
-import Recorder from './recorder '
-import { UserAction, MouseType, KeyboardType, TouchType } from './recorder '
+import Recorder from './recorder'
+import { UserAction, MouseType, KeyboardType, TouchType } from './recorder'
 import { getXPath, getFullXPath, getElementByXPath } from './helper'
 
 // 创建录制器实例

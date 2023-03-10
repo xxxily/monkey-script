@@ -5,15 +5,7 @@ import highlightPlugin from './highlightPlugin'
 import debug, { logMsg } from './debug'
 
 const webObs = new WebObserver(document, {
-  click: true,
-  dblclick: true,
-  mousemove: false,
-  mousedown: false,
-  mouseup: false,
-  mouseenter: false,
-  mouseleave: false,
-  mouseover: false,
-  mouseout: false,
+  ...recordConfig.get('webObs.options'),
   // mousemoveSampleInterval: 30,
   // mouseHandler(event, action) {
   //   if (action.type === 'click' || action.type === 'dblclick') {
@@ -25,12 +17,6 @@ const webObs = new WebObserver(document, {
   //     action.data.styles = styles
   //   }
   // },
-
-  scroll: false,
-
-  keydown: true,
-  keyup: true,
-  keypress: false,
   keyboardHandler(event, action) {
     /**
      * 忽略用户按下的某些按键
@@ -42,11 +28,6 @@ const webObs = new WebObserver(document, {
       action.__drop__ = true
     }
   },
-
-  ignore: {
-    /* 忽略F1-F4按键 */
-    keyCodes: [112, 113, 114, 115],
-  },
 })
 
 let showRecorderInfo = false
@@ -54,6 +35,11 @@ let showRecorderInfoToCode = false
 
 /* 注册观察者记录用户操作 */
 webObs.recorder.register((action) => {
+  /* 为了能进行跨页事件的记录，需将每次用户操作的数据存储到localStorage中，这个操作比较耗性能，待优化 */
+  const userAction = recordConfig.get('webObs.userAction') || []
+  userAction.push(action)
+  recordConfig.setGlobalStorage('webObs.userAction', userAction)
+
   if (showRecorderInfo) {
     debug.log(`Recorded action: [${action.type}]`, action.data)
   }
@@ -65,20 +51,39 @@ webObs.recorder.register((action) => {
   }
 })
 
-function toggleWebObserver(clear: boolean = false) {
-  if (webObs.isObserver()) {
-    webObs.unObserver()
-    highlightPlugin.disable()
-    showRecorderInfo = false
-    showRecorderInfoToCode = false
-    logMsg.log('禁用录制模式')
+export function useWebObserver(clear: boolean = false) {
+  if (clear) {
+    webObs.recorder.clear()
+    recordConfig.setGlobalStorage('webObs.userAction', [])
+    logMsg.log('已清除历史录制结果')
+  }
+
+  recordConfig.setGlobalStorage('webObs.enable', true)
+  webObs.observer()
+  showRecorderInfo = true
+  showRecorderInfoToCode = true
+  logMsg.log('启动录制模式')
+
+  if (recordConfig.get('elementSelection')) {
+    highlightPlugin.enable()
+    logMsg.log('启动高亮辅组插件')
+  }
+}
+
+export function unUseWebObserver() {
+  recordConfig.setGlobalStorage('webObs.enable', false)
+  webObs.unObserver()
+  highlightPlugin.disable()
+  showRecorderInfo = false
+  showRecorderInfoToCode = false
+  logMsg.log('禁用录制模式')
+}
+
+export function toggleWebObserver(clear: boolean = false) {
+  if (recordConfig.get('webObs.enable')) {
+    unUseWebObserver()
   } else {
-    clear && webObs.recorder.clear()
-    webObs.observer()
-    recordConfig.get('elementSelection') && highlightPlugin.enable()
-    showRecorderInfo = true
-    showRecorderInfoToCode = true
-    logMsg.log('启动录制模式')
+    useWebObserver(clear)
   }
 }
 
@@ -108,14 +113,15 @@ export function registerWebObserverHotkey() {
 
         /* 打印录制的用户操作转换成编程代码的结果 */
         case 'F3':
-          const actions = webObs.recorder.getActions()
+          // const actions = webObs.recorder.getActions()
+          const actions = recordConfig.get('webObs.userAction') || []
           const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
           logMsg.log(`[Recorded actions to code]\n`, code)
           break
 
         /* 打印录制的用户操作元素数据 */
         case 'F4':
-          logMsg.log(`[Record actions]`, webObs.recorder.getActions())
+          logMsg.log(`[Record actions]`, recordConfig.get('webObs.userAction') || [])
           break
       }
     },
@@ -123,6 +129,13 @@ export function registerWebObserverHotkey() {
   )
 
   hasRegisterWebObserverHotkey = true
+}
+
+export function webObsInit() {
+  registerWebObserverHotkey()
+
+  /* 是否默认启动webRecord的录制功能 */
+  recordConfig.get('webObs.enable') ? useWebObserver() : unUseWebObserver()
 }
 
 export default webObs

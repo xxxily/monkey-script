@@ -35,3 +35,9 @@ function keyboardInfo () {
   }, true)
 }
 keyboardInfo()
+
+
+/* 导航的变化 */
+window.addEventListener('popstate', function(event) {
+  console.log('[popstate]', location.href, event.state)
+});

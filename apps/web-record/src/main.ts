@@ -1,7 +1,7 @@
 import './style.css'
 import recordConfig from './recordConfig'
 import debug from './debug'
-import webObs, { registerWebObserverHotkey } from './webObs'
+import webObs, { webObsInit } from './webObs'
 import highlightPlugin from './highlightPlugin'
 import { fromEvent, filter, bufferTime } from 'rxjs'
 import userActionsToCode from './userActionToCode'
@@ -11,13 +11,14 @@ import { menuRegister } from './menuManager'
 function main() {
   menuRegister()
 
+  /* 清除之前的所有LocalStorage里的配置 */
+  recordConfig.clearLocalStorage()
+
   if (!recordConfig.get('enable')) return
 
   debug.log('web-record init')
 
-  /* 是否默认启动webRecord的录制功能 */
-  recordConfig.get('webObs.enable') ? webObs.observer() : webObs.unObserver()
-  registerWebObserverHotkey()
+  webObsInit()
 
   window.addEventListener('DOMContentLoaded', () => {
     highlightPlugin.init()

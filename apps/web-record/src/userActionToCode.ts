@@ -1,4 +1,4 @@
-import { UserAction, UserActionType } from './recorder '
+import { UserAction, UserActionType } from './recorder'
 import handlebars from 'handlebars'
 
 type TemplateMap = Record<UserActionType, string | undefined | null>
