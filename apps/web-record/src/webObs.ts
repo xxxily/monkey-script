@@ -3,6 +3,7 @@ import WebObserver from './observers'
 import userActionsToCode from './userActionToCode'
 import highlightPlugin from './highlightPlugin'
 import debug, { logMsg } from './debug'
+import { UserAction } from './recorder'
 
 const webObs = new WebObserver(document, {
   ...recordConfig.get('webObs.options'),
@@ -31,7 +32,6 @@ const webObs = new WebObserver(document, {
 })
 
 let showRecorderInfo = false
-let showRecorderInfoToCode = false
 
 /* 注册观察者记录用户操作 */
 webObs.recorder.register((action) => {
@@ -41,15 +41,36 @@ webObs.recorder.register((action) => {
   recordConfig.setGlobalStorage('webObs.userAction', userAction)
 
   if (showRecorderInfo) {
-    debug.log(`Recorded action: [${action.type}]`, action.data)
-  }
-
-  if (showRecorderInfoToCode) {
     const actions = [action]
     const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
-    debug.log(`[Recorded actions to code]\n`, code)
+
+    debug.log(`Recorded action: [${action.type}]`, action.data, '\n' + code)
   }
 })
+
+/**
+ * 对录制的动作数据进行过滤优化
+ * @param actions {UserAction[]} -必选 录制的动作数据
+ * @returns {UserAction[]} -返回过滤优化后的动作数据
+ */
+function actionsResultHandler(actions: UserAction[]): UserAction[] {
+  /* 消除dblclick动作生产多余的click事件 */
+  actions = actions.filter((action) => {
+    if (action.type === 'click') {
+      const nextAction = actions[actions.indexOf(action) + 1]
+      const nextSecondAction = actions[actions.indexOf(action) + 2]
+      if (nextAction && nextAction.type === 'dblclick' && nextAction.time - action.time < 300) {
+        return false
+      } else if (nextSecondAction && nextSecondAction.type === 'dblclick' && nextSecondAction.time - action.time < 800) {
+        return false
+      }
+    }
+
+    return true
+  })
+
+  return actions
+}
 
 export function useWebObserver(clear: boolean = false) {
   if (clear) {
@@ -61,7 +82,6 @@ export function useWebObserver(clear: boolean = false) {
   recordConfig.setGlobalStorage('webObs.enable', true)
   webObs.observer()
   showRecorderInfo = true
-  showRecorderInfoToCode = true
   logMsg.log('启动录制模式')
 
   if (recordConfig.get('elementSelection')) {
@@ -75,7 +95,6 @@ export function unUseWebObserver() {
   webObs.unObserver()
   highlightPlugin.disable()
   showRecorderInfo = false
-  showRecorderInfoToCode = false
   logMsg.log('禁用录制模式')
 }
 
@@ -114,14 +133,14 @@ export function registerWebObserverHotkey() {
         /* 打印录制的用户操作转换成编程代码的结果 */
         case 'F3':
           // const actions = webObs.recorder.getActions()
-          const actions = recordConfig.get('webObs.userAction') || []
+          const actions = actionsResultHandler((recordConfig.get('webObs.userAction') || []) as UserAction[])
           const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
           logMsg.log(`[Recorded actions to code]\n`, code)
           break
 
         /* 打印录制的用户操作元素数据 */
         case 'F4':
-          logMsg.log(`[Record actions]`, recordConfig.get('webObs.userAction') || [])
+          logMsg.log(`[Record actions]`, actionsResultHandler((recordConfig.get('webObs.userAction') || []) as UserAction[]))
           break
       }
     },

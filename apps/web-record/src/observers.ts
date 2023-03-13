@@ -16,11 +16,19 @@ export type ObserverElement = HTMLElement | Document
 
 export interface Options {
   /* 大类别 */
+  navigation?: boolean
   mouse?: boolean
   touch?: boolean
   drag?: boolean
   scroll?: boolean
   keyboard?: boolean
+
+  /* 页面URL变化的事件 */
+  DOMContentLoaded?: boolean // 该事件为自定义数据，表示页面进入时的url
+  pushstate?: boolean
+  replacestate?: boolean
+  popstate?: boolean
+  hashchange?: boolean
 
   /* 鼠标事件 */
   click?: boolean
@@ -54,6 +62,7 @@ export interface Options {
   mousemoveSampleInterval?: number
 
   /* 自定义事件处理函数，通过自定义处理函数可以往UserAction里增加自己需要的信息自动 */
+  navigationHandler?: (e: Event, action: UserAction) => void
   mouseHandler?: (e: MouseEvent, action: UserAction) => void
   keyboardHandler?: (e: KeyboardEvent, action: UserAction) => void
   touchHandler?: (e: TouchEvent, action: UserAction) => void
@@ -89,7 +98,7 @@ export interface EventInfo {
   [key: string | number | symbol]: any
 }
 
-function extractEventInfo(e: EventObject) {
+function extractEventInfo(e: EventObject, actionComposeType?: string) {
   const eventInfo: EventInfo = {}
 
   /* 获取event对象下所有键名，并且将键值为数字或字符串的键值对提取出来 */
@@ -139,6 +148,10 @@ function extractEventInfo(e: EventObject) {
     eventInfo.innerText = target.innerText
   }
 
+  if (actionComposeType) {
+    eventInfo.actionCompose = actionComposeType
+  }
+
   return eventInfo
 }
 
@@ -150,6 +163,7 @@ export default class WebObserver {
   private hasRegistered: boolean = false
   private opts: Options = {
     /* 大类 */
+    navigation: true,
     mouse: true,
     touch: true,
     drag: true,
@@ -157,6 +171,12 @@ export default class WebObserver {
     keyboard: true,
 
     /* 小类 */
+    DOMContentLoaded: true,
+    pushstate: true,
+    replacestate: true,
+    popstate: true,
+    hashchange: true,
+
     click: true,
     dblclick: true,
     mousemove: false,
@@ -247,6 +267,69 @@ export default class WebObserver {
     return false
   }
 
+  /* 监听页面导航，URL变化的事件 */
+  navigationObserver() {
+    if (!this.opts.navigation) return
+
+    const navigationEventHandler = (event: Event) => {
+      const action = {
+        type: event.type.replace(/^__navigation_/, ''),
+        time: Date.now(),
+        data: {
+          actionCompose: 'navigation',
+          referrer: document.referrer,
+          hash: location.hash,
+          host: location.host,
+          hostname: location.hostname,
+          href: location.href,
+          origin: location.origin,
+          pathname: location.pathname,
+          port: location.port,
+          protocol: location.protocol,
+        },
+      }
+
+      /* 执行自定义事件处理函数 */
+      this.opts.navigationHandler instanceof Function && this.opts.navigationHandler(event, action)
+
+      recorder.record(action)
+    }
+
+    this.opts.DOMContentLoaded && window.addEventListener('DOMContentLoaded', navigationEventHandler)
+    this.opts.popstate && window.addEventListener('popstate', navigationEventHandler)
+    this.opts.hashchange && window.addEventListener('hashchange', navigationEventHandler)
+
+    function historyHooks(type: 'pushState' | 'replaceState') {
+      const originMethod = history[type]
+
+      return function () {
+        interface CustomEvent extends Event {
+          [prop: string | number | symbol]: any
+        }
+
+        const result = originMethod.apply(history, arguments as any)
+
+        /* 为了避免导致应用重复监听到replaceState和pushState事件，这里的自定义事件名称要取得不一样 */
+        const customEvent: CustomEvent = new Event(`__navigation_${type.toLowerCase()}`)
+
+        customEvent.arguments = arguments
+        window.dispatchEvent(customEvent)
+
+        return result
+      }
+    }
+
+    history.pushState = historyHooks('pushState')
+    history.replaceState = historyHooks('replaceState')
+
+    /**
+     * 由于pushState和replaceState不会触发popstate和hashchange事件，所以需要通过AOP或Proxy来增加replaceState和pushState的事件监听
+     * https://github.com/forthealllight/blog/issues/37
+     */
+    this.opts.replacestate && window.addEventListener('__navigation_replacestate', navigationEventHandler)
+    this.opts.popstate && window.addEventListener('__navigation_pushstate', navigationEventHandler)
+  }
+
   /* 监听鼠标移动事件 */
   mouseObserver(element: ObserverElement) {
     const mouseType: MouseType[] = ['click', 'dblclick', 'mousemove', 'mousedown', 'mouseup', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout']
@@ -274,7 +357,7 @@ export default class WebObserver {
           const action = {
             type: type,
             time: Date.now(),
-            data: extractEventInfo(event),
+            data: extractEventInfo(event, 'mouse'),
           }
 
           /* 执行自定义事件处理函数 */
@@ -309,7 +392,7 @@ export default class WebObserver {
         const action = {
           type: type,
           time: Date.now(),
-          data: extractEventInfo(event),
+          data: extractEventInfo(event, 'touch'),
         }
 
         /* 执行自定义事件处理函数 */
@@ -344,7 +427,7 @@ export default class WebObserver {
             type: 'drag',
             time: Date.now(),
             target: event.target as HTMLElement,
-            data: extractEventInfo(event),
+            data: extractEventInfo(event, 'drag'),
           }
 
           /* 执行自定义事件处理函数 */
@@ -379,7 +462,7 @@ export default class WebObserver {
       const action = {
         type: 'scroll',
         time: Date.now(),
-        data: extractEventInfo(event),
+        data: extractEventInfo(event, 'scroll'),
       }
 
       /* 执行自定义事件处理函数 */
@@ -407,7 +490,7 @@ export default class WebObserver {
           const action = {
             type: type,
             time: Date.now(),
-            data: extractEventInfo(event),
+            data: extractEventInfo(event, 'keyboard'),
           }
 
           /* 执行自定义事件处理函数 */
@@ -432,6 +515,7 @@ export default class WebObserver {
 
     /* 注册各个事件的观察函数 */
     const element = this.element
+    this.opts.navigation && this.navigationObserver()
     this.opts.mouse && this.mouseObserver(element)
     this.opts.touch && this.touchObserver(element)
     this.opts.scroll && this.scrollObserver(element)

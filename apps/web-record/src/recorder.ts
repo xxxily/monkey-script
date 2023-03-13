@@ -3,9 +3,10 @@ export type KeyboardType = 'keydown' | 'keyup' | 'keypress'
 export type TouchType = 'touchstart' | 'touchmove' | 'touchend'
 export type DragType = 'dragstart' | 'drag' | 'dragend' | 'dragenter' | 'dragleave' | 'dragover' | 'drop'
 export type ScrollType = 'scroll'
+export type Navigation = 'DOMContentLoaded' | 'pushstate' | 'replacestate' | 'popstate' | 'hashchange'
 
 // 定义用户操作类型
-export type UserActionType = MouseType | KeyboardType | TouchType | DragType | ScrollType | string
+export type UserActionType = Navigation | MouseType | KeyboardType | TouchType | DragType | ScrollType | string
 
 // 定义用户操作数据
 export interface UserAction {

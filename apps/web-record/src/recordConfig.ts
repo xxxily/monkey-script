@@ -23,6 +23,12 @@ export const defaultConfig: DefRecordConfig = {
   webObs: {
     enable: false,
     options: {
+      DOMContentLoaded: true,
+      pushstate: true,
+      replacestate: true,
+      popstate: true,
+      hashchange: true,
+
       click: true,
       dblclick: true,
       mousemove: false,

@@ -1,7 +1,11 @@
 import { UserAction, UserActionType } from './recorder'
 import handlebars from 'handlebars'
 
-type TemplateMap = Record<UserActionType, string | undefined | null>
+// type TemplateMap = Record<UserActionType, string | undefined | null>
+
+interface TemplateMap extends Record<UserActionType, string | undefined | null | any> {
+  actionCompose: Record<UserActionType, string | undefined | null>
+}
 
 /**
  * 基于handlebars模板引擎，将用户操作转换为代码
@@ -21,6 +25,13 @@ export default function userActionsToCode(actions: UserAction[], templateMap: Te
   actions.forEach((action) => {
     if (templateMap[action.type]) {
       const template = handlebars.compile(templateMap[action.type])
+      codeArr.push(template(action))
+    }
+
+    /* 根据组合事件的事件模板生成对应的代码 */
+    const hasActionCompose = action.data && action.data.actionCompose && templateMap.actionCompose && templateMap.actionCompose[action.data.actionCompose]
+    if (hasActionCompose) {
+      const template = handlebars.compile(templateMap.actionCompose[action.data.actionCompose])
       codeArr.push(template(action))
     }
   })
@@ -85,4 +96,7 @@ export const seleniumPythonTemplateMap: TemplateMap = {
   dragleave: "ActionChains(driver).move_to_element(driver.find_element_by_css_selector('{{data.xPath}}')).perform()",
   dragover: "ActionChains(driver).move_to_element(driver.find_element_by_css_selector('{{data.xPath}}')).perform()",
   scroll: 'driver.execute_script("window.scrollTo({{data.x}}, {{data.y}})")',
+  actionCompose: {
+    navigation: 'location.href = "{{data.href}}"',
+  },
 }
