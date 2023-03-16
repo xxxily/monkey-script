@@ -25,7 +25,7 @@ export default defineConfig({
         name: '操作记录器',
         description: '浏览器操作记录辅助，端测代码生成辅助工具',
         match: ['*://*/*'],
-        version: '1.0.1',
+        version: '1.0.3',
         license: 'Apache License 2.0',
         author: 'ankvps',
         'run-at': 'document-start',
