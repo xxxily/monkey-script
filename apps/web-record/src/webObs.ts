@@ -121,13 +121,14 @@ export function useWebObserver(clear: boolean = false) {
   }
 }
 
-export function unUseWebObserver() {
+export function unUseWebObserver(noTips: boolean = false) {
   recordConfig.setGlobalStorage('webObs.enable', false)
   webObs.unObserver()
   highlightPlugin.disable()
   showRecorderInfo = false
   logMsg.log('禁用录制模式')
-  simpleTips.show('录制模式已禁用')
+
+  !noTips && simpleTips.show('录制模式已禁用')
 }
 
 export function toggleWebObserver(clear: boolean = false) {
@@ -200,7 +201,7 @@ export function webObsInit() {
   registerWebObserverHotkey()
 
   /* 是否默认启动webRecord的录制功能 */
-  recordConfig.get('webObs.enable') ? useWebObserver() : unUseWebObserver()
+  recordConfig.get('webObs.enable') ? useWebObserver() : unUseWebObserver(true)
 }
 
 export default webObs
