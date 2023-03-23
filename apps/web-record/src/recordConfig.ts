@@ -9,6 +9,15 @@ export interface DefRecordConfig {
     enable: boolean
     options: Options
     userAction?: UserAction[]
+
+    /* 自动采集元素选择器的控制选项 */
+    autoCollect?: {
+      enable: boolean
+      /* 自动采集时，采集的元素选择器类型 */
+      filter: 'cssSelector' | 'xPath' | 'fullXPath' | 'innerText'
+      /* 激活自动采集的修饰键 */
+      modifierKeys: string[]
+    }
   }
   elementSelection: boolean
   codeTemplate: string
@@ -46,11 +55,21 @@ export const defaultConfig: DefRecordConfig = {
       keyup: true,
       keypress: false,
       ignore: {
-        /* 忽略F1-F4按键 */
-        keyCodes: [112, 113, 114, 115],
+        /* 忽略F1-F12按键 */
+        // keyCodes: [112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123],
+        codes: [
+          'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
+          'ControlRight', 'AltRight', 'ShiftRight', 'MetaRight',
+        ],
       },
     },
     userAction: [],
+
+    autoCollect: {
+      enable: true,
+      filter: 'cssSelector',
+      modifierKeys: ['AltRight', 'ShiftRight', 'MetaRight'],
+    }
   },
 
   /* 是否启用高亮辅助插件 */

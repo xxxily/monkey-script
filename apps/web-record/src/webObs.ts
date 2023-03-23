@@ -1,9 +1,16 @@
+import copyText from 'common-libs/src/libs/utils/copyToClipboard'
+import SimpleTips from 'common-libs/src/libs/utils/simpleTips'
 import recordConfig from './recordConfig'
 import WebObserver from './observers'
 import userActionsToCode from './userActionToCode'
 import highlightPlugin from './highlightPlugin'
 import debug, { logMsg } from './debug'
 import { UserAction } from './recorder'
+
+const simpleTips = new SimpleTips({
+  parentNode: document.body,
+  fontSize: 16,
+})
 
 const webObs = new WebObserver(document, {
   ...recordConfig.get('webObs.options'),
@@ -43,6 +50,24 @@ webObs.recorder.register((action) => {
   if (showRecorderInfo) {
     const actions = [action]
     const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
+
+    if (['click', 'dblclick'].includes(action.type)) {
+      const coreData = {
+        fullXPath: action.data.fullXPath,
+        xPath: action.data.xPath,
+        cssSelector: action.data.cssSelector,
+        innerText: action.data.innerText,
+      }
+
+      console.table(coreData)
+
+      /* 自动将结果复制到剪贴板，减少复制粘贴的操作步骤 */
+      // if (recordConfig.get('webObs.autoCollect')) {
+      //   const collectFilter = recordConfig.get('webObs.collectFilter') as keyof typeof coreData
+      //   const result = coreData[collectFilter] || ''
+      //   result && copyText(result)
+      // }
+    }
 
     debug.log(`Recorded action: [${action.type}]`, action.data, '\n' + code)
   }
@@ -88,6 +113,12 @@ export function useWebObserver(clear: boolean = false) {
     highlightPlugin.enable()
     logMsg.log('启动高亮辅组插件')
   }
+
+  if (clear) {
+    simpleTips.show('录制模式已启动, 已清除历史录制结果')
+  } else {
+    simpleTips.show('录制模式已启动')
+  }
 }
 
 export function unUseWebObserver() {
@@ -96,6 +127,7 @@ export function unUseWebObserver() {
   highlightPlugin.disable()
   showRecorderInfo = false
   logMsg.log('禁用录制模式')
+  simpleTips.show('录制模式已禁用')
 }
 
 export function toggleWebObserver(clear: boolean = false) {
@@ -106,9 +138,24 @@ export function toggleWebObserver(clear: boolean = false) {
   }
 }
 
+export function getActionsResult(toCode: boolean = false) {
+  const actions = actionsResultHandler((recordConfig.get('webObs.userAction') || []) as UserAction[])
+
+  if (toCode) {
+    const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
+    copyText(code || '当前没有录制数据')
+    return code
+  } else {
+    copyText(JSON.stringify(actions, null, 2))
+    return actions
+  }
+}
+
 let hasRegisterWebObserverHotkey = false
 export function registerWebObserverHotkey() {
   if (hasRegisterWebObserverHotkey) return
+
+
 
   window.addEventListener(
     'keydown',
@@ -132,15 +179,14 @@ export function registerWebObserverHotkey() {
 
         /* 打印录制的用户操作转换成编程代码的结果 */
         case 'F3':
-          // const actions = webObs.recorder.getActions()
-          const actions = actionsResultHandler((recordConfig.get('webObs.userAction') || []) as UserAction[])
-          const code = userActionsToCode(actions, JSON.parse(recordConfig.get('codeTemplate')), true)
-          logMsg.log(`[Recorded actions to code]\n`, code)
+          logMsg.log(`[Recorded actions to code]\n`, getActionsResult(true))
+          simpleTips.show('代码已复制到剪贴板')
           break
 
         /* 打印录制的用户操作元素数据 */
         case 'F4':
-          logMsg.log(`[Record actions]`, actionsResultHandler((recordConfig.get('webObs.userAction') || []) as UserAction[]))
+          logMsg.log(`[Record actions]`, getActionsResult())
+          simpleTips.show('原始数据已复制到剪贴板')
           break
       }
     },

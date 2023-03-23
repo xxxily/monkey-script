@@ -3,6 +3,21 @@ import handlebars from 'handlebars'
 
 // type TemplateMap = Record<UserActionType, string | undefined | null>
 
+/**
+ * 为了方便外部对变量字符串进行处理，此处按需定义一些常用的handlebars helper
+ * handlebars helper的使用方法请参考：https://handlebarsjs.com/zh/guide/block-helpers.html
+ */
+
+/* 将字符串转成单引号 */
+handlebars.registerHelper("toSingleQuotes", function (text: string) {
+  return text.replace(/"/g, "'");
+});
+
+/* 将字符串转成双引号 */
+handlebars.registerHelper("toDoubleQuotes", function (text: string) {
+  return text.replace(/'/g, '"');
+});
+
 interface TemplateMap extends Record<UserActionType, string | undefined | null | any> {
   actionCompose: Record<UserActionType, string | undefined | null>
 }
@@ -56,8 +71,10 @@ export function codeTemplateVerify(template: string) {
       const key = templateMapKeys[i]
       const value = templateMap[key]
 
-      if (typeof value !== 'string') {
-        return false
+      if (key !== 'actionCompose') {
+        if (typeof value !== 'string') {
+          return false
+        }
       }
     }
 

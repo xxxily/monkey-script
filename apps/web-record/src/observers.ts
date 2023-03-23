@@ -1,6 +1,6 @@
 import Recorder from './recorder'
 import { UserAction, MouseType, KeyboardType, TouchType } from './recorder'
-import { getXPath, getFullXPath, getElementByXPath } from './helper'
+import { extractEventInfo } from './helper'
 
 // 创建录制器实例
 const recorder = new Recorder()
@@ -75,85 +75,22 @@ export interface Options {
     tagName?: string[]
     ids?: string[]
     keyCodes?: number[]
+    codes?: string[]
     hotKeys?: string[]
     handler?: (e: Event) => boolean
   }
-}
-
-/* 判断键名是否是对象的键名 */
-export function isValidKey(key: string | number | symbol, object: object): key is keyof typeof object {
-  return key in object
 }
 
 /**
  * 解决for in 类型报：在类型 "xxx"上找不到具有类型为 "string" 的参数的索引签名
  * https://blog.csdn.net/zy21131437/article/details/121246493
  */
-interface EventObject extends Event {
-  [key: string | number | symbol]: any
+
+/* 判断键名是否是对象的键名 */
+export function isValidKey(key: string | number | symbol, object: object): key is keyof typeof object {
+  return key in object
 }
 
-/* 提取事件的相关信息 */
-export interface EventInfo {
-  [key: string | number | symbol]: any
-}
-
-function extractEventInfo(e: EventObject, actionComposeType?: string) {
-  const eventInfo: EventInfo = {}
-
-  /* 获取event对象下所有键名，并且将键值为数字或字符串的键值对提取出来 */
-  for (const key in e) {
-    try {
-      const val = e[key]
-      if (typeof val !== 'function' && typeof val !== 'object') {
-        eventInfo[key] = val
-      }
-    } catch (err) {
-      console.error('[extractEventInfo]', err, e)
-    }
-  }
-
-  const target = e.target as HTMLElement
-
-  /* 利用缓存减少计算量 */
-  if (target.__observers_full_xpath__ && getElementByXPath(target.__observers_full_xpath__) === target) {
-    eventInfo.fullXPath = target.__observers_full_xpath__
-  } else {
-    eventInfo.fullXPath = getFullXPath(target)
-    target.__observers_full_xpath__ = eventInfo.fullXPath
-  }
-
-  /* 利用缓存减少计算量 */
-  if (target.__observers_xpath__ && getElementByXPath(target.__observers_xpath__) === target) {
-    eventInfo.xPath = target.__observers_xpath__
-  } else {
-    eventInfo.xPath = getXPath(target)
-    target.__observers_xpath__ = eventInfo.xPath
-  }
-
-  /* 获取元素矩形信息，暂时来说没太大用处 */
-  // if (target.getBoundingClientRect) {
-  //   eventInfo.rect = target.getBoundingClientRect()
-  // } else {
-  //   /* 当target为document时，target.getBoundingClientRect为undefined */
-  //   // console.error('[extractEventInfo] target.getBoundingClientRect is not a function', target)
-  // }
-
-  /**
-   * 获取元素的innerText
-   * 为了降低性能损耗，只有当元素的子元素数量小于等于3个，且子元素的dom节点数小于5，且innerText的字符长度小于80时才获取innerText
-   * 另外：过于复杂的dom结构，获取到的innerText并不是我们所需要的
-   */
-  if (target.childElementCount <= 3 && target.querySelectorAll('*').length < 5 && target.innerText && target.innerText.length < 80) {
-    eventInfo.innerText = target.innerText
-  }
-
-  if (actionComposeType) {
-    eventInfo.actionCompose = actionComposeType
-  }
-
-  return eventInfo
-}
 
 export default class WebObserver {
   record: (action: UserAction) => void
@@ -224,13 +161,15 @@ export default class WebObserver {
   }
 
   isIgnoreDom(target: HTMLElement) {
+    let isIgnored = false
     if (this.opts.ignore) {
       const { className, tagName, ids } = this.opts.ignore
 
       if (className && className.length) {
         for (let i = 0; i < className.length; i++) {
           if (target.classList.contains(className[i])) {
-            return true
+            isIgnored = true
+            break
           }
         }
       }
@@ -238,7 +177,8 @@ export default class WebObserver {
       if (tagName && tagName.length) {
         for (let i = 0; i < tagName.length; i++) {
           if (target.tagName === tagName[i].toUpperCase()) {
-            return true
+            isIgnored = true
+            break
           }
         }
       }
@@ -246,25 +186,48 @@ export default class WebObserver {
       if (ids && ids.length) {
         for (let i = 0; i < ids.length; i++) {
           if (target.id === ids[i]) {
-            return true
+            isIgnored = true
+            break
           }
         }
       }
     }
 
-    return false
+    return isIgnored
   }
 
   isIgnoredKeyboardEvent(e: KeyboardEvent) {
+    let isIgnored = false
     if (this.opts.ignore) {
-      const { keyCodes } = this.opts.ignore
+      const { keyCodes, codes, hotKeys } = this.opts.ignore
 
-      if (keyCodes && keyCodes.length) {
-        return keyCodes.includes(e.keyCode)
+      if (keyCodes && keyCodes.length && keyCodes.includes(e.keyCode)) {
+        isIgnored = true
+      }
+
+      if (codes && codes.length && codes.includes(e.code)) {
+        isIgnored = true
+      }
+
+      if (hotKeys && hotKeys.length) {
+        /* TODO 待完善 */
+        // for (let i = 0; i < hotKeys.length; i++) {
+        //   const hotKey = hotKeys[i]
+
+        //   if (hotKey.ctrlKey && !e.ctrlKey) continue
+        //   if (hotKey.shiftKey && !e.shiftKey) continue
+        //   if (hotKey.altKey && !e.altKey) continue
+        //   if (hotKey.metaKey && !e.metaKey) continue
+        //   if (hotKey.keyCode && hotKey.keyCode !== e.keyCode) continue
+        //   if (hotKey.code && hotKey.code !== e.code) continue
+
+        //   isIgnored = true
+        //   break
+        // }
       }
     }
 
-    return false
+    return isIgnored
   }
 
   /* 监听页面导航，URL变化的事件 */

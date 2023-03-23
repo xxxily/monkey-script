@@ -1,16 +1,23 @@
+import SimpleTips from 'common-libs/src/libs/utils/simpleTips'
+
 export interface BoxOptions {
   type?: 'div' | 'outline' | 'box-shadow' | 'boxShadow' | 'combine'
   style?: 'solid' | 'dashed' | 'dotted' | 'double' | 'groove' | 'ridge' | 'inset' | 'outset'
   color?: string
   width?: string
   borderRadius?: string
-  mouseoverCallback?: (element: HTMLElement, opts: BoxOptions) => void
-  mouseoutCallback?: (element: HTMLElement, opts: BoxOptions) => void
+  mouseoverCallback?: (event: MouseEvent, opts: BoxOptions) => void
+  mouseoutCallback?: (event: MouseEvent, opts: BoxOptions) => void
 }
 
 export default class ElementSelection {
   private available: boolean = true
   private currentTarget: HTMLElement | null = null
+  private currentDivBox: HTMLElement | null = null
+  private simpleTipsInstance = new SimpleTips({
+    parentNode: document.body,
+    fontSize: 12,
+  })
 
   constructor(element: HTMLElement, opts: BoxOptions = {}) {
     this.toogleBoxShadow(element, opts)
@@ -26,6 +33,7 @@ export default class ElementSelection {
    * @returns {void}
    */
   toogleBoxShadow(element: HTMLElement, opts: BoxOptions = {}) {
+    const t = this
     const boxShadowSty = `inset 0 0 0 ${opts.width || '1px'} ${opts.color || 'blue'}`
     const outlineSty = `${opts.width || '1px'} ${opts.style || 'dashed'} ${opts.color || 'blue'}`
     let originalBoxShadow = ''
@@ -37,8 +45,11 @@ export default class ElementSelection {
     const useDiv = boxType === 'div' || boxType === 'combine'
 
     function createDivBox(): HTMLElement {
-      const borderBoxEl = document.getElementById('__el_border_box__')
-      if (borderBoxEl) return borderBoxEl as HTMLElement
+      const borderBoxEl = document.querySelector('#__el_border_box__')
+      if (borderBoxEl) {
+        t.currentDivBox = borderBoxEl as HTMLElement
+        return borderBoxEl as HTMLElement
+      }
 
       const borderBox = (document.querySelector('#__el_border_box__') || document.createElement('div')) as HTMLElement
       borderBox.id = '__el_border_box__'
@@ -50,6 +61,7 @@ export default class ElementSelection {
       borderBox.style.visibility = 'hidden'
       document.body.appendChild(borderBox)
 
+      t.currentDivBox = borderBox
       return borderBox
     }
     createDivBox()
@@ -90,7 +102,7 @@ export default class ElementSelection {
           borderBox.style.visibility = 'visible'
         }
 
-        opts.mouseoverCallback instanceof Function && opts.mouseoverCallback(target, opts)
+        opts.mouseoverCallback instanceof Function && opts.mouseoverCallback(event, opts)
       },
       true
     )
@@ -112,7 +124,9 @@ export default class ElementSelection {
         originalBoxShadow = ''
         originalOutline = ''
 
-        opts.mouseoutCallback instanceof Function && opts.mouseoutCallback(target, opts)
+        opts.mouseoutCallback instanceof Function && opts.mouseoutCallback(event, opts)
+
+        this.simpleTipsInstance && this.simpleTipsInstance.hide(1)
       },
       true
     )
@@ -130,13 +144,21 @@ export default class ElementSelection {
     borderBox && (borderBox.style.visibility = 'hidden')
   }
 
+  tips(msg: string) {
+    this.simpleTipsInstance.tips(msg, this.currentDivBox as HTMLElement)
+  }
+
   getCurrentTarget() {
     return this.currentTarget
+  }
+
+  getCurrentDivBox() {
+    return this.currentDivBox
   }
 
   isAvailable() {
     return this.available
   }
 
-  destroy() {}
+  destroy() { }
 }

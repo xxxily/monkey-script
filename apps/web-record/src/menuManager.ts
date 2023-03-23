@@ -3,6 +3,7 @@ import { codeTemplateVerify, seleniumPythonTemplateMap } from './userActionToCod
 import monkeyMenu from 'common-libs/src/libs/monkey/monkeyMenu'
 import recordConfig from './recordConfig'
 import highlightPlugin from './highlightPlugin'
+import { openInTab } from './helper'
 
 /* 菜单构造函数（必须是函数才能在点击后动态更新菜单状态） */
 function menuBuilder() {
@@ -75,6 +76,13 @@ function menuBuilder() {
 
         recordConfig.setGlobalStorage('elementSelection', !recordConfig.get('elementSelection'))
         window.location.reload()
+      },
+      disable: false,
+    },
+    {
+      title: () => `脚本帮助`,
+      fn: () => {
+        openInTab('https://greasyfork.org/zh-CN/scripts/461403')
       },
       disable: false,
     },
