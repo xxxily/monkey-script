@@ -8,7 +8,8 @@ import debug, { logMsg } from './debug'
 import { UserAction } from './recorder'
 
 const simpleTips = new SimpleTips({
-  parentNode: document.body,
+  parentNode: document.documentElement,
+  position: 'fixed',
   fontSize: 16,
 })
 

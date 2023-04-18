@@ -340,3 +340,79 @@ export function extractEventInfo(e: EventObject, actionComposeType?: string) {
 
   return eventInfo
 }
+
+
+/**
+ * 由于tampermonkey对window对象进行了封装，我们实际访问到的window并非页面真实的window
+ * 这就导致了如果我们需要将某些对象挂载到页面的window进行调试的时候就无法挂载了
+ * 所以必须使用特殊手段才能访问到页面真实的window对象，于是就有了下面这个函数
+ * @returns {Promise<void>}
+ */
+export async function getPageWindow() {
+  return new Promise(function (resolve, reject) {
+    if (window._pageWindow) {
+      return resolve(window._pageWindow)
+    }
+
+    /* 尝试通过同步的方式获取pageWindow */
+    try {
+      const pageWin = getPageWindowSync()
+      if (pageWin && pageWin.document && pageWin.XMLHttpRequest) {
+        window._pageWindow = pageWin
+        resolve(pageWin)
+        return pageWin
+      }
+    } catch (e) { }
+
+    /* 下面异步获取pagewindow的方法在最新的chrome浏览器里已失效 */
+
+    const listenEventList = ['load', 'mousemove', 'scroll', 'get-page-window-event']
+
+    function getWin() {
+      window._pageWindow = this
+      // debug.log('getPageWindow succeed', event)
+      listenEventList.forEach(eventType => {
+        window.removeEventListener(eventType, getWin, true)
+      })
+      resolve(window._pageWindow)
+    }
+
+    listenEventList.forEach(eventType => {
+      window.addEventListener(eventType, getWin, true)
+    })
+
+    /* 自行派发事件以便用最短的时间获得pageWindow对象 */
+    window.dispatchEvent(new window.Event('get-page-window-event'))
+  })
+}
+getPageWindow()
+
+/**
+ * 通过同步的方式获取pageWindow
+ * 注意同步获取的方式需要将脚本写入head，部分网站由于安全策略会导致写入失败，而无法正常获取
+ * @returns {*}
+ */
+export function getPageWindowSync(rawFunction?: Function) {
+  if (window.unsafeWindow) return window.unsafeWindow
+  const document = window.document as any
+
+  if (document._win_) return document._win_
+
+  try {
+    rawFunction = rawFunction || window.__rawFunction__ || Function.prototype.constructor || Function
+    // return rawFunction('return window')()
+    // Function('return (function(){}.constructor("return this")());')
+    if (rawFunction) {
+      return rawFunction('return (function(){}.constructor("var getPageWindowSync=1; return this")());')()
+    }
+  } catch (e) {
+    console.error('getPageWindowSync error', e)
+
+    const head = document.head || document.querySelector('head')
+    const script = document.createElement('script')
+    script.appendChild(document.createTextNode('document._win_ = window'))
+    head.appendChild(script)
+
+    return document._win_
+  }
+}

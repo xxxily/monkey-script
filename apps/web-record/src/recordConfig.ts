@@ -20,8 +20,8 @@ export interface DefRecordConfig {
     }
   }
   elementSelection: boolean
-  codeTemplate: string
-  debug: boolean
+  codeTemplate?: string
+  debug?: boolean
 }
 
 export const defaultConfig: DefRecordConfig = {

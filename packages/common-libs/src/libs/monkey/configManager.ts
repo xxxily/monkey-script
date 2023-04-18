@@ -95,6 +95,25 @@ export default class ConfigManager {
     return keyName.replace(this.opts.prefix, '').replace(/_/g, '.')
   }
 
+  getConfPathList(config: Record<string, any>) {
+    const confPathList:string[] = []
+    
+    /* 递归获取所有配置项的路径 */
+    function getConfPathList(config: Record<string, any>, path = '') {
+      Object.keys(config).forEach((key) => {
+        const pathKey = path ? `${path}.${key}` : key
+        if (Object.prototype.toString.call(config[key]) === '[object Object]') {
+          getConfPathList(config[key], pathKey)
+        } else {
+          confPathList.push(pathKey)
+        }
+      })
+    }
+    getConfPathList(config)
+
+    return confPathList
+  }
+
   /**
    * 根据给定的配置路径，获取相关配置信息
    * 获取顺序：LocalStorage > GlobalStorage > defConfig > null
@@ -119,7 +138,8 @@ export default class ConfigManager {
     }
 
     /* 如果localStorage和GlobalStorage配置都没找到，则尝试在默认配置表里拿相关配置信息 */
-    const defConfVal = getValByPath(this.opts.config, confPath)
+    const config = this.getConfObj()
+    const defConfVal = getValByPath(config, confPath)
     if (typeof defConfVal !== 'undefined' && defConfVal !== null) {
       return defConfVal
     }
@@ -309,6 +329,57 @@ export default class ConfigManager {
     } else {
       return {}
     }
+  }
+
+  getConfObj() {
+    const confList = this.list()
+
+    /* 同步全局配置到this.opts.config */
+    Object.keys(confList.globalConf).forEach((confPath) => {
+      setValByPath(this.opts.config, confPath, confList.globalConf[confPath])
+    })
+
+    /* 同步本地配置到this.opts.config */
+    Object.keys(confList.localConf).forEach((confPath) => {
+      setValByPath(this.opts.config, confPath, confList.localConf[confPath])
+    })
+
+    return this.opts.config
+  }
+
+  setLocalStorageByObj(config: Record<string, any>) {
+    const oldConfig = this.getConfObj()
+    const confPathList = this.getConfPathList(config)
+    confPathList.forEach((confPath) => {
+      const oldVal = getValByPath(oldConfig, confPath)
+      const val = getValByPath(config, confPath)
+
+      /* 跳过一样的值或在旧配置中不存在的值 */
+      if (oldVal === val || oldVal === undefined) {
+        return
+      }
+
+      this.setLocalStorage(confPath, val)
+    })
+  }
+
+  setGlobalStorageByObj(config: Record<string, any>) {
+    const oldConfig = this.getConfObj()
+    const confPathList = this.getConfPathList(config)
+    confPathList.forEach((confPath) => {
+      const oldVal = getValByPath(oldConfig, confPath)
+      const val = getValByPath(config, confPath)
+
+      /* 跳过一样的值或在旧配置中不存在的值 */
+      
+      if (oldVal === val || oldVal === undefined) {
+        return
+      }
+
+      console.log('setGlobalStorageByObj', confPath, val)
+
+      this.setGlobalStorage(confPath, val)
+    })
   }
 
   clearLocalStorage() {

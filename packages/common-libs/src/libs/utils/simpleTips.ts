@@ -1,6 +1,7 @@
 export interface SimpleTipsOpts {
   fontSize?: number
   parentNode?: HTMLElement
+  position?: 'absolute' | 'fixed' | 'relative' | 'static' | 'sticky' | 'inherit' | 'initial' | 'unset'
   tipsClassName?: string
   timeout?: number
   /* 是否允许输出html内容 */
@@ -18,6 +19,7 @@ class SimpleTips {
       parentNode: null,
       tipsClassName: 'simple-tips-' + Date.now(),
       timeout: 1000,
+      absolute: 'absolute',
       /* 是否允许输出html内容 */
       html: false
     }
@@ -37,7 +39,7 @@ class SimpleTips {
     if (!parentNode || !parentNode.querySelector || parentNode.querySelector('.' + opts.tipsClassName)) return
 
     const tipsStyle = `
-      position: absolute;
+      position: ${opts.position || 'absolute'};
       z-index: 999999;
       font-size: ${opts.fontSize || 16}px;
       padding: 5px 10px;

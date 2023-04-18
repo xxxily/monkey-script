@@ -2,6 +2,7 @@ import { MenuInfo } from 'common-libs/src/libs/monkey/monkeyMenu'
 import { codeTemplateVerify, seleniumPythonTemplateMap } from './userActionToCode'
 import monkeyMenu from 'common-libs/src/libs/monkey/monkeyMenu'
 import recordConfig from './recordConfig'
+import { DefRecordConfig } from './recordConfig'
 import highlightPlugin from './highlightPlugin'
 import { openInTab } from './helper'
 
@@ -29,6 +30,13 @@ function menuBuilder() {
       fn: () => {
         function setCodeTemplate(template?: string) {
           const codeTemplate = template || recordConfig.get('codeTemplate')
+
+          const useOnlineEditor = confirm('是否使用在线编辑器？')
+          if(useOnlineEditor){
+            openInTab('https://h5player.anzz.top/tools/json-editor/index.html?&mode=code&saveHandlerName=saveWebRecordCodeTemplate&json=' + encodeURIComponent(codeTemplate))
+            return
+          }
+
           const newCodeTemplate = prompt('请输入代码模板，注：请将模板复制到本地或线上编辑器进行编辑，如：json.cn', codeTemplate)
 
           if (newCodeTemplate === null) return
@@ -76,6 +84,19 @@ function menuBuilder() {
 
         recordConfig.setGlobalStorage('elementSelection', !recordConfig.get('elementSelection'))
         window.location.reload()
+      },
+      disable: false,
+    },
+    {
+      title: () => `更多设置`,
+      fn: () => {
+        const config = JSON.parse(JSON.stringify(recordConfig.getConfObj())) as DefRecordConfig
+        
+        /* 录制下来的动作不应该纳入配置 */
+        delete config.codeTemplate
+        delete config.webObs.userAction
+
+        openInTab('https://h5player.anzz.top/tools/json-editor/index.html?&mode=tree&saveHandlerName=saveWebRecordConfig&json=' + encodeURIComponent(JSON.stringify(config)))
       },
       disable: false,
     },

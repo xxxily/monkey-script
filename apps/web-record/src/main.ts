@@ -6,6 +6,7 @@ import highlightPlugin from './highlightPlugin'
 import { fromEvent, filter, bufferTime } from 'rxjs'
 import userActionsToCode from './userActionToCode'
 import { menuRegister } from './menuManager'
+import initSaveConfigHandler from './saveConfigHandler'
 // import { getXPath, getElementByXPath, getStyles } from './helper'
 
 function main() {
@@ -13,6 +14,8 @@ function main() {
 
   /* 清除之前的所有LocalStorage里的配置 */
   recordConfig.clearLocalStorage()
+
+  initSaveConfigHandler()
 
   if (!recordConfig.get('enable')) return
 
